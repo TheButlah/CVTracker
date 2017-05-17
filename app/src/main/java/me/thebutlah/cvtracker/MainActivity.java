@@ -15,7 +15,9 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfDMatch;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -154,9 +156,12 @@ public class MainActivity extends Activity implements
      */
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        return inputFrame.rgba(); //Do nothing for now
+        Mat in = inputFrame.gray();
+        Mat out = new Mat();
+        Imgproc.Laplacian(in, out, CvType.CV_8UC1, 3, 2, 0);
+        return out;
+        //return inputFrame.rgba(); //Do nothing for now
     }
-
     /**
      * Called when a touch event is dispatched to a view. This allows listeners to
      * get a chance to respond before the target view.
