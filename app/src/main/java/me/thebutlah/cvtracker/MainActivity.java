@@ -7,7 +7,13 @@ import android.media.Image;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.SurfaceView;
+import android.view.View;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
@@ -18,48 +24,70 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 
-public class MainActivity extends Activity {
+
+
+public class MainActivity extends Activity implements
+        CameraBridgeViewBase.CvCameraViewListener2,
+        View.OnTouchListener {
+
+    public static final String TAG = R.string.app_name + "::Main";
+
+    private CameraView cameraView;
+
+    /** Enables CameraView when OpenCV loads */
+    private BaseLoaderCallback loaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    cameraView.enableView();
+                    cameraView.setOnTouchListener(MainActivity.this);
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        if (!OpenCVLoader.initDebug()) {
-            Log.e(this.getClass().getSimpleName(), "  OpenCVLoader.initDebug(), not working.");
-        } else {
-            Log.d(this.getClass().getSimpleName(), "  OpenCVLoader.initDebug(), working.");
-        }
-        String inputFileName="test";
-        String inputExtension = "png";
-        String inputDir = getCacheDir().getAbsolutePath();  // use the cache directory for i/o
-        String outputDir = getCacheDir().getAbsolutePath();
-        String outputExtension = "png";
-        String inputFilePath = inputDir + File.separator + inputFileName + "." + inputExtension;
-
-        File cacheFile = new File(inputFilePath);
-        if (!cacheFile.exists()) {
-            Bitmap bm = BitmapFactory.decodeResource(this.getResources(), R.drawable.test);
-            saveBitmapToFile(cacheFile, bm, Bitmap.CompressFormat.PNG, 100);
-
-        }
-
-
-        Log.d (this.getClass().getSimpleName(), "loading " + inputFilePath + "...");
-        Mat image = Imgcodecs.imread(inputFilePath);
-        Log.d (this.getClass().getSimpleName(), "width of " + inputFileName + ": " + image.width());
-// if width is 0 then it did not read your image.
-
-
-// for the canny edge detection algorithm, play with these to see different results
-        int threshold1 = 70;
-        int threshold2 = 100;
-
-        Mat im_canny = new Mat();  // you have to initialize output image before giving it to the Canny method
-        Imgproc.Canny(image, im_canny, threshold1, threshold2);
-        String cannyFilename = outputDir + File.separator + inputFileName + "_canny-" + threshold1 + "-" + threshold2 + "." + outputExtension;
-        Log.d (this.getClass().getSimpleName(), "Writing " + cannyFilename);
-        Imgcodecs.imwrite(cannyFilename, im_canny);
+        cameraView = (CameraView) findViewById(R.id.camera_view);
+        cameraView.setVisibility(SurfaceView.VISIBLE);
+        cameraView.setCvCameraViewListener(this);
     }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (cameraView != null) cameraView.disableView();
+    }
+
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, loaderCallback);
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            loaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (cameraView != null) cameraView.disableView();
+    }
+
 
 
     /**
@@ -93,6 +121,53 @@ public class MainActivity extends Activity {
                 }
             }
         }
+        return false;
+    }
+
+    /**
+     * This method is invoked when camera preview has started. After this method is invoked
+     * the frames will start to be delivered to client via the onCameraFrame() callback.
+     *
+     * @param width  -  the width of the frames that will be delivered
+     * @param height - the height of the frames that will be delivered
+     */
+    @Override
+    public void onCameraViewStarted(int width, int height) {
+
+    }
+
+    /**
+     * This method is invoked when camera preview has been stopped for some reason.
+     * No frames will be delivered via onCameraFrame() callback after this method is called.
+     */
+    @Override
+    public void onCameraViewStopped() {
+
+    }
+
+    /**
+     * This method is invoked when delivery of the frame needs to be done.
+     * The returned values - is a modified frame which needs to be displayed on the screen.
+     * TODO: pass the parameters specifying the format of the frame (BPP, YUV or RGB and etc)
+     *
+     * @param inputFrame
+     */
+    @Override
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+        return inputFrame.rgba(); //Do nothing for now
+    }
+
+    /**
+     * Called when a touch event is dispatched to a view. This allows listeners to
+     * get a chance to respond before the target view.
+     *
+     * @param v     The view the touch event has been dispatched to.
+     * @param event The MotionEvent object containing full information about
+     *              the event.
+     * @return True if the listener has consumed the event, false otherwise.
+     */
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
         return false;
     }
 }

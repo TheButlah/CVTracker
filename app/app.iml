@@ -128,6 +128,5 @@
     <orderEntry type="library" exported="" name="support-compat-25.3.1" level="project" />
     <orderEntry type="library" exported="" name="animated-vector-drawable-25.3.1" level="project" />
     <orderEntry type="module" module-name="openCVLibrary320" exported="" />
-    <orderEntry type="library" exported="" name="openCVLibrary320-unspecified" level="project" />
   </component>
 </module>
