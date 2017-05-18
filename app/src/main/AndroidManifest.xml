@@ -3,12 +3,14 @@
     package="me.thebutlah.cvtracker">
 
     <uses-permission android:name="android.permission.CAMERA"/>
-
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
     <uses-feature android:name="android.hardware.camera.front" />
     <uses-feature android:name="android.hardware.camera.front.autofocus" />
+
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
     <application
         android:allowBackup="true"
@@ -19,8 +21,8 @@
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="sensorLandscape"
-            android:configChanges="keyboardHidden|orientation">
+            android:screenOrientation="landscape">
+            <!--android:configChanges="keyboardHidden|orientation"-->
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
