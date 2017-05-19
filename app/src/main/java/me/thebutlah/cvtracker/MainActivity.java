@@ -10,12 +10,14 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.TextView;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfRect;
@@ -31,6 +33,7 @@ import org.opencv.objdetect.HOGDescriptor;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 
 
 public class MainActivity extends Activity implements
@@ -41,6 +44,9 @@ public class MainActivity extends Activity implements
 
     private CameraView cameraView;
     private int width, height;
+
+    private TextView fpsView;
+
     private Communicator comm;
 
     private HOGDescriptor hog;
@@ -79,6 +85,7 @@ public class MainActivity extends Activity implements
         cameraView = (CameraView) findViewById(R.id.camera_view);
         cameraView.setVisibility(SurfaceView.VISIBLE);
         cameraView.setCvCameraViewListener(this);
+        fpsView = (TextView) findViewById(R.id.fps);
         comm = new Communicator(this);
     }
 
@@ -166,6 +173,12 @@ public class MainActivity extends Activity implements
 
     }
 
+    Mat img;
+    MatOfRect locations;
+    MatOfDouble weights;
+    Mat down;
+    Mat result;
+    long lastTime = System.currentTimeMillis();
     /**
      * This method is invoked when delivery of the frame needs to be done.
      * The returned values - is a modified frame which needs to be displayed on the screen.
@@ -175,31 +188,47 @@ public class MainActivity extends Activity implements
      */
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        System.gc();
-        Mat img = inputFrame.rgba();
-        MatOfRect locations  = new MatOfRect();
-        MatOfDouble weights = new MatOfDouble();
-        Mat gray = new Mat();
-        Imgproc.cvtColor(img, gray, Imgproc.COLOR_RGBA2RGB);
-        Mat down = new Mat();
+        //if (img != null) img.release();
+        if (locations == null) locations = new MatOfRect();
+        if (weights == null) weights = new MatOfDouble();
+        if (down == null) down = new Mat();
+        if (result == null) result = new Mat();
+        img = inputFrame.rgba();
+        Core.flip(img, img, -1);
+        Imgproc.cvtColor(img, down, Imgproc.COLOR_RGBA2RGB);
         Size originalSize = img.size();
-        Size downSize = new Size(200, 200);
-        Imgproc.resize(gray, down, downSize);
-        hog.detectMultiScale(down, locations, weights, 0.0, new Size(4, 4), new Size(8, 8), 1.05, 2.0, false);
+        Size downSize = new Size();
+        Imgproc.resize(down, down, downSize, 0.25, 0.25, Imgproc.INTER_NEAREST);
+        hog.detectMultiScale(
+            down, locations, weights,
+            0.0, new Size(4, 4), new Size(16, 16), 1.25, 2.0, false
+        );
+        ArrayList<Point> centers = new ArrayList<>();
         for (Rect r : locations.toArray()) {
-            Log.d(TAG, String.format("(%f, %f)", r.br().x, r.tl().x));
-            Imgproc.rectangle(down, r.br(), r.tl(), Scalar.all(120));
+            Log.v(TAG, String.format("(%f, %f)", r.br().x, r.tl().x));
+            Point br = r.br();
+            Point tl = r.tl();
+            //Point br = scalePoint(r.br(), originalSize, downSize);
+            //Point tl = scalePoint(r.tl(), originalSize, downSize);
+            Point center = new Point((br.x + tl.x)/2, (br.y + tl.y)/2);
+            centers.add(center);
+            Imgproc.rectangle(down, br, tl, new Scalar(255, 0, 0));
         }
-        Mat result = new Mat();
-        Size upSize= new Size();
+
         Imgproc.resize(down, result, originalSize);
-        Imgproc.cvtColor(result, result, Imgproc.COLOR_RGB2RGBA);
-        //Imgproc.Laplacian(in, out, CvType.CV_8UC1, 3, 2, 0);
-        img.release();
-        locations.release();
-        weights.release();
-        gray.release();
-        down.release();
+
+        //if (centers.size() < 0) comm.send(centers.get(0).x)
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                long currentTime = System.currentTimeMillis();
+                long delta = currentTime-lastTime;
+                double fps = 1000.0/delta;
+                lastTime = currentTime;
+                fpsView.setText(String.format("FPS: %4f", fps));
+            }
+        });
+
         return result;
         //return inputFrame.rgba(); //Do nothing for now
     }
@@ -222,9 +251,12 @@ public class MainActivity extends Activity implements
         return true;
     }
 
-    private static Point upscalePoint(Point p, double factor){
-        p.x *= factor;
-        p.y *= factor;
-        return p;
+    private static Point scalePoint(Point p, Size original, Size current){
+        double x_factor = original.width/current.width;
+        double y_factor = original.height/current.height;
+        Point result = new Point();
+        result.x = p.x * x_factor;
+        result.y = p.y * y_factor;
+        return result;
     }
 }

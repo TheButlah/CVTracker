@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CVTracker</string>
+    <string name="fps">FPS:</string>
 </resources>

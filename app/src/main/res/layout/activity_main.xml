@@ -4,12 +4,27 @@
     android:layout_height="match_parent"
     xmlns:opencv="http://schemas.android.com/apk/res-auto">
 
-    <me.thebutlah.cvtracker.CameraView
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone"
-        android:keepScreenOn="true"
-        opencv:camera_id="back"
-        android:id="@+id/camera_view" />
+        android:layout_weight="1">
+
+        <me.thebutlah.cvtracker.CameraView
+            android:id="@+id/camera_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:keepScreenOn="true"
+            android:visibility="gone"
+            opencv:camera_id="back" />
+
+        <TextView
+            android:id="@+id/fps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/fps"
+            android:textColor="@android:color/holo_green_light" />
+
+    </FrameLayout>
 
 </LinearLayout>
