@@ -199,23 +199,31 @@ public class MainActivity extends Activity implements
         Size originalSize = img.size();
         Size downSize = new Size();
         Imgproc.resize(down, down, downSize, 0.15, 0.15, Imgproc.INTER_NEAREST);
+        downSize = down.size();
         hog.detectMultiScale(
             down, locations, weights,
             0.0, new Size(4, 4), new Size(16, 16), 1.25, 2.0, false
         );
-        ArrayList<Point> centers = new ArrayList<>();
+        ArrayList<Byte> centers = new ArrayList<>();
         for (Rect r : locations.toArray()) {
-            Log.v(TAG, String.format("(%f, %f)", r.br().x, r.tl().x));
-            Point br = r.br();
-            Point tl = r.tl();
-            //Point br = scalePoint(r.br(), originalSize, downSize);
-            //Point tl = scalePoint(r.tl(), originalSize, downSize);
-            Point center = new Point((br.x + tl.x)/2, (br.y + tl.y)/2);
+            //Log.v(TAG, String.format("(%f, %f)", r.br().x, r.tl().x));
+            /*Point br = r.br();
+            Point tl = r.tl();*/
+            Point br = scalePoint(r.br(), originalSize, downSize);
+            Point tl = scalePoint(r.tl(), originalSize, downSize);
+            double x = (br.x + tl.x)/2;
+            byte center = (byte) (x/originalSize.width*255);
             centers.add(center);
-            Imgproc.rectangle(down, br, tl, new Scalar(255, 0, 0));
+            Imgproc.rectangle(img, br, tl, new Scalar(255, 0, 0));
         }
 
-        Imgproc.resize(down, result, originalSize);
+        if (centers.size() > 0) {
+            byte b = centers.get(0);
+            comm.send(b);
+            Log.d(TAG, String.format("Sending: %d", b & 0xFF));
+        }
+
+        //Imgproc.resize(down, result, originalSize);
 
         //if (centers.size() < 0) comm.send(centers.get(0).x)
         runOnUiThread(new Runnable() {
@@ -229,7 +237,7 @@ public class MainActivity extends Activity implements
             }
         });
 
-        return result;
+        return img;
         //return inputFrame.rgba(); //Do nothing for now
     }
     /**
@@ -243,12 +251,13 @@ public class MainActivity extends Activity implements
      */
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        byte x = (byte) (event.getX()/width * 255);
+        /*byte x = (byte) (event.getX()/width * 255);
         byte y = (byte) (event.getY()/height * 255);
         String str = String.format("(%d,%d)", x, y);
         comm.send(x);
         Log.d(TAG, str);
-        return true;
+        return true;*/
+        return false;
     }
 
     private static Point scalePoint(Point p, Size original, Size current){
