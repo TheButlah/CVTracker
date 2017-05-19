@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -34,6 +35,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends Activity implements
@@ -46,29 +48,32 @@ public class MainActivity extends Activity implements
     private int width, height;
 
     private TextView fpsView;
+    long time1 = System.currentTimeMillis(); //Older
+    long time2 = System.currentTimeMillis(); //Newer
 
-    private Communicator comm;
+    Communicator comm;
+    private ObjectTracker tracker;
+    HOGDescriptor hog;
 
-    private HOGDescriptor hog;
-
-    /** Called when OpenCV loads */
+    /**
+     * Called when OpenCV loads
+     */
     private BaseLoaderCallback loaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
+                case LoaderCallbackInterface.SUCCESS: {
                     Log.i(TAG, "OpenCV loaded successfully");
                     cameraView.enableView();
                     cameraView.setOnTouchListener(MainActivity.this);
-
                     hog = new HOGDescriptor();
                     hog.setSVMDetector(HOGDescriptor.getDefaultPeopleDetector());
-                } break;
-                default:
-                {
+                }
+                break;
+                default: {
                     super.onManagerConnected(status);
-                } break;
+                }
+                break;
             }
         }
     };
@@ -81,7 +86,8 @@ public class MainActivity extends Activity implements
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
         this.height = metrics.heightPixels;
         this.width = metrics.widthPixels;
-        this.TAG = getResources().getString(R.string.app_name) + "::Main";;
+        this.TAG = getResources().getString(R.string.app_name) + "::Main";
+        ;
         cameraView = (CameraView) findViewById(R.id.camera_view);
         cameraView.setVisibility(SurfaceView.VISIBLE);
         cameraView.setCvCameraViewListener(this);
@@ -97,8 +103,7 @@ public class MainActivity extends Activity implements
 
 
     @Override
-    public void onResume()
-    {
+    public void onResume() {
         super.onResume();
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
@@ -117,12 +122,11 @@ public class MainActivity extends Activity implements
     }
 
 
-
     /**
      * Bitmap.CompressFormat can be PNG,JPEG or WEBP.
-     *
+     * <p>
      * quality goes from 1 to 100. (Percentage).
-     *
+     * <p>
      * dir you can get from many places like Environment.getExternalStorageDirectory() or mContext.getFilesDir()
      * depending on where you want to save the image.
      */
@@ -133,14 +137,13 @@ public class MainActivity extends Activity implements
         try {
             fos = new FileOutputStream(imageFile);
 
-            bm.compress(format,quality,fos);
+            bm.compress(format, quality, fos);
 
             fos.close();
 
             return true;
-        }
-        catch (IOException e) {
-            Log.e("app",e.getMessage());
+        } catch (IOException e) {
+            Log.e("app", e.getMessage());
             if (fos != null) {
                 try {
                     fos.close();
@@ -173,12 +176,12 @@ public class MainActivity extends Activity implements
 
     }
 
-    Mat img;
-    MatOfRect locations;
-    MatOfDouble weights;
-    Mat down;
-    Mat result;
-    long lastTime = System.currentTimeMillis();
+    private Mat img;
+    private MatOfRect locations;
+    private MatOfDouble weights;
+    private Mat down;
+    List<Rect> boxes;
+    Object boxLock = new Object();
     /**
      * This method is invoked when delivery of the frame needs to be done.
      * The returned values - is a modified frame which needs to be displayed on the screen.
@@ -188,39 +191,27 @@ public class MainActivity extends Activity implements
      */
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        //if (img != null) img.release();
+        img = inputFrame.rgba();
+        Core.flip(img, img, -1);
+        Imgproc.cvtColor(img, img, Imgproc.COLOR_RGBA2RGB);
         if (locations == null) locations = new MatOfRect();
         if (weights == null) weights = new MatOfDouble();
         if (down == null) down = new Mat();
-        if (result == null) result = new Mat();
-        img = inputFrame.rgba();
-        Core.flip(img, img, -1);
-        Imgproc.cvtColor(img, down, Imgproc.COLOR_RGBA2RGB);
-        Size originalSize = img.size();
-        Size downSize = new Size();
-        Imgproc.resize(down, down, downSize, 0.15, 0.15, Imgproc.INTER_NEAREST);
-        downSize = down.size();
-        hog.detectMultiScale(
-            down, locations, weights,
-            0.0, new Size(4, 4), new Size(16, 16), 1.25, 2.0, false
-        );
-        ArrayList<Byte> centers = new ArrayList<>();
-        for (Rect r : locations.toArray()) {
-            //Log.v(TAG, String.format("(%f, %f)", r.br().x, r.tl().x));
-            /*Point br = r.br();
-            Point tl = r.tl();*/
-            Point br = scalePoint(r.br(), originalSize, downSize);
-            Point tl = scalePoint(r.tl(), originalSize, downSize);
-            double x = (br.x + tl.x)/2;
-            byte center = (byte) (x/originalSize.width*127);
-            centers.add(center);
-            Imgproc.rectangle(img, br, tl, new Scalar(255, 0, 0));
-        }
-
-        if (centers.size() > 0) {
-            byte b = centers.get(0);
-            comm.send(b);
-            Log.d(TAG, String.format("Sending: %d", b & 0xFF));
+        if (tracker == null) {
+            tracker = new ObjectTracker(this);
+            tracker.execute(img, locations, weights, down);
+        } else if (tracker.getStatus() == AsyncTask.Status.FINISHED) {
+            synchronized (boxLock) {
+                for (Rect r : boxes) {
+                    Imgproc.rectangle(img, r.br(), r.tl(), new Scalar(255, 0, 0), 4);
+                    double x = (r.br().x + r.tl().x) / 2.0;
+                    byte center = (byte) (x / img.size().width * 127);
+                    Log.d(TAG, String.format("Sending: %d", center & 0xFF));
+                    comm.send(center);
+                }
+            }
+            tracker = new ObjectTracker(this);
+            tracker.execute(img, locations, weights, down);
         }
 
         //Imgproc.resize(down, result, originalSize);
@@ -229,17 +220,15 @@ public class MainActivity extends Activity implements
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                long currentTime = System.currentTimeMillis();
-                long delta = currentTime-lastTime;
-                double fps = 1000.0/delta;
-                lastTime = currentTime;
+                long delta = time2 - time1;
+                double fps = 1000.0 / delta;
                 fpsView.setText(String.format("FPS: %4f", fps));
             }
         });
-
         return img;
         //return inputFrame.rgba(); //Do nothing for now
     }
+
     /**
      * Called when a touch event is dispatched to a view. This allows listeners to
      * get a chance to respond before the target view.
@@ -258,14 +247,5 @@ public class MainActivity extends Activity implements
         Log.d(TAG, str);
         return true;*/
         return false;
-    }
-
-    private static Point scalePoint(Point p, Size original, Size current){
-        double x_factor = original.width/current.width;
-        double y_factor = original.height/current.height;
-        Point result = new Point();
-        result.x = p.x * x_factor;
-        result.y = p.y * y_factor;
-        return result;
     }
 }
