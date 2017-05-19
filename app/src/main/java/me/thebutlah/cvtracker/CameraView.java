@@ -6,7 +6,6 @@ import java.util.List;
 import org.opencv.android.JavaCameraView;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.hardware.Camera;
 import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.Size;

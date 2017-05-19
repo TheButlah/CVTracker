@@ -1,9 +1,7 @@
 package me.thebutlah.cvtracker;
 
 import android.app.Activity;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -17,24 +15,22 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.CvType;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfRect;
-import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.engine.OpenCVEngineInterface;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.HOGDescriptor;
+import org.opencv.videoio.VideoWriter;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 
@@ -53,7 +49,10 @@ public class MainActivity extends Activity implements
 
     Communicator comm;
     private ObjectTracker tracker;
+    Object hogLock = new Object();
     HOGDescriptor hog;
+
+    private VideoWriter writer;
 
     /**
      * Called when OpenCV loads
@@ -87,7 +86,6 @@ public class MainActivity extends Activity implements
         this.height = metrics.heightPixels;
         this.width = metrics.widthPixels;
         this.TAG = getResources().getString(R.string.app_name) + "::Main";
-        ;
         cameraView = (CameraView) findViewById(R.id.camera_view);
         cameraView.setVisibility(SurfaceView.VISIBLE);
         cameraView.setCvCameraViewListener(this);
@@ -164,7 +162,26 @@ public class MainActivity extends Activity implements
      */
     @Override
     public void onCameraViewStarted(int width, int height) {
-
+        /*File dir = new File(
+            "CVTracker"
+        );
+        Log.d(TAG, dir.getAbsolutePath());
+        if (!dir.exists() && !dir.mkdirs()) Log.e(TAG, "Directory not created!");*/
+        /*Date date = new Date();
+        SimpleDateFormat format = new SimpleDateFormat("yyy-MM-dd_HH-mm-ss");
+        File file = new File(getFilesDir(), format.format(date) + ".avi");
+        try {
+            file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        writer = new VideoWriter(
+            format.format(date) + ".avi", VideoWriter.fourcc('M', 'J', 'P', 'G'),
+            15, new Size(width, height)
+        );
+        if (writer.isOpened()) Log.i(TAG, "Opened video!");
+        else Log.e(TAG, "Failed to open video!");*/
     }
 
     /**
@@ -173,7 +190,7 @@ public class MainActivity extends Activity implements
      */
     @Override
     public void onCameraViewStopped() {
-
+        //writer.release();
     }
 
     private Mat img;
@@ -213,6 +230,7 @@ public class MainActivity extends Activity implements
             tracker = new ObjectTracker(this);
             tracker.execute(img, locations, weights, down);
         }
+
 
         //Imgproc.resize(down, result, originalSize);
 

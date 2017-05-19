@@ -1,20 +1,15 @@
 package me.thebutlah.cvtracker;
 
-import android.app.Activity;
 import android.os.AsyncTask;
 
-import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.HOGDescriptor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -48,7 +43,7 @@ public class ObjectTracker extends AsyncTask<Mat, Object, List<Rect>>{
      * @see #publishProgress
      */
     @Override
-    protected List<Rect> doInBackground(Mat... params) {
+    protected synchronized List<Rect> doInBackground(Mat... params) {
         if (params == null || params.length != 4) return null;
         Mat img = params[0];
         MatOfRect locations = (MatOfRect) params[1];
@@ -58,6 +53,7 @@ public class ObjectTracker extends AsyncTask<Mat, Object, List<Rect>>{
         Size downSize = new Size();
         Imgproc.resize(img, down, downSize, 0.15, 0.15, Imgproc.INTER_NEAREST);
         downSize = down.size();
+        //Log.d(TAG, Integer.toString(img.type()));
         context.hog.detectMultiScale(
             down, locations, weights,
             0.0, new Size(4, 4), new Size(16, 16), 1.25, 2.0, false
