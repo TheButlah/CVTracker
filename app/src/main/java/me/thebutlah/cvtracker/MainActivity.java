@@ -1,6 +1,7 @@
 package me.thebutlah.cvtracker;
 
 import android.app.Activity;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -36,7 +37,7 @@ public class MainActivity extends Activity implements
         CameraBridgeViewBase.CvCameraViewListener2,
         View.OnTouchListener {
 
-    public static final String TAG = R.string.app_name + "::Main";
+    public String TAG;
 
     private CameraView cameraView;
     private int width, height;
@@ -74,6 +75,7 @@ public class MainActivity extends Activity implements
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
         this.height = metrics.heightPixels;
         this.width = metrics.widthPixels;
+        this.TAG = getResources().getString(R.string.app_name) + "::Main";;
         cameraView = (CameraView) findViewById(R.id.camera_view);
         cameraView.setVisibility(SurfaceView.VISIBLE);
         cameraView.setCvCameraViewListener(this);
@@ -104,6 +106,7 @@ public class MainActivity extends Activity implements
     public void onDestroy() {
         super.onDestroy();
         if (cameraView != null) cameraView.disableView();
+        Log.v(TAG, "onDestroy!");
     }
 
 
@@ -214,7 +217,7 @@ public class MainActivity extends Activity implements
         byte x = (byte) (event.getX()/width * 255);
         byte y = (byte) (event.getY()/height * 255);
         String str = String.format("(%d,%d)", x, y);
-        comm.send(x,y);
+        comm.send(x);
         Log.d(TAG, str);
         return true;
     }

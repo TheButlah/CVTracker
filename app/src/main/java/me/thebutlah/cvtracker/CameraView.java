@@ -6,6 +6,7 @@ import java.util.List;
 import org.opencv.android.JavaCameraView;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.hardware.Camera;
 import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.Size;
@@ -14,11 +15,12 @@ import android.util.Log;
 
 public class CameraView extends JavaCameraView implements PictureCallback {
 
-    public static final String TAG = R.string.app_name + "::View";
+    public final String TAG;
     private String mPictureFileName;
 
     public CameraView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        this.TAG = context.getResources().getString(R.string.app_name) + "::View";
     }
 
     public List<String> getEffectList() {

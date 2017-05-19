@@ -9,7 +9,7 @@
         android:layout_height="match_parent"
         android:visibility="gone"
         android:keepScreenOn="true"
-        opencv:camera_id="front"
+        opencv:camera_id="back"
         android:id="@+id/camera_view" />
 
 </LinearLayout>
