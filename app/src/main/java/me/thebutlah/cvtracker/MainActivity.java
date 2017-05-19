@@ -198,7 +198,7 @@ public class MainActivity extends Activity implements
         Imgproc.cvtColor(img, down, Imgproc.COLOR_RGBA2RGB);
         Size originalSize = img.size();
         Size downSize = new Size();
-        Imgproc.resize(down, down, downSize, 0.25, 0.25, Imgproc.INTER_NEAREST);
+        Imgproc.resize(down, down, downSize, 0.15, 0.15, Imgproc.INTER_NEAREST);
         hog.detectMultiScale(
             down, locations, weights,
             0.0, new Size(4, 4), new Size(16, 16), 1.25, 2.0, false
