@@ -40,7 +40,10 @@ public class Communicator implements Bluetooth.CommunicationCallback, Bluetooth.
     }
 
     public boolean send(byte... b) {
-        if (b==null || b.length == 0 || !adapter.isConnected()) return false;
+        if (b==null || b.length == 0 || !adapter.isConnected()) {
+            Log.e(TAG, "Could not send data!");
+            return false;
+        }
         String msg = new String(b);
         //Log.d(TAG, String.format("Sending: %d", msg));
         adapter.send(msg);

@@ -212,7 +212,7 @@ public class MainActivity extends Activity implements
             Point br = scalePoint(r.br(), originalSize, downSize);
             Point tl = scalePoint(r.tl(), originalSize, downSize);
             double x = (br.x + tl.x)/2;
-            byte center = (byte) (x/originalSize.width*255);
+            byte center = (byte) (x/originalSize.width*127);
             centers.add(center);
             Imgproc.rectangle(img, br, tl, new Scalar(255, 0, 0));
         }
